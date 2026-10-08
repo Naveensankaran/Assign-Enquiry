@@ -192,8 +192,11 @@ function choose(u) {
 async function loadUsers() {
   list.innerHTML = '<li class="state">Loading...</li>';
   try {
-    const cu = await ZOHO.CRM.CONFIG.getCurrentUser();
-    const managerId = cu.users[0].id;
+    // The record's Owner is the "manager" whose team we list
+    const rec = await ZOHO.CRM.API.getRecord({ Entity: CONFIG.TARGET_MODULE, RecordID: recordId });
+    const owner = rec && rec.data && rec.data[0] && rec.data[0].Owner;
+    if (!owner || !owner.id) throw new Error("Record owner not found");
+    const managerId = owner.id;
 
     const res = await ZOHO.CRM.FUNCTIONS.execute(CONFIG.FUNCTION_API_NAME, {
       arguments: JSON.stringify({ managerUserId: managerId })
