@@ -127,7 +127,7 @@ const selectEl = $("select"), btn = $("selectBtn"), list = $("list"), search = $
 $("fieldLabel").textContent = CONFIG.FIELD_LABEL;
 
 /* ---------- dropdown behaviour ---------- */
-const SIZE = { w: 440, closedH: 150, openH: 300 };
+const SIZE = { w: 440, closedH: 150 };
 function setSize(h) {
   try { ZOHO.CRM.UI.Resize({ height: String(h), width: String(SIZE.w) }).catch(() => {}); } catch (e) {}
 }
@@ -243,7 +243,7 @@ $("cancelBtn").addEventListener("click", () => ZOHO.CRM.UI.Popup.close());
 
 /* ---------- boot ---------- */
 ZOHO.embeddedApp.on("PageLoad", data => {
-  setSize(SIZE.openH);
+  setSize(SIZE.closedH);
   recordId = Array.isArray(data.EntityId) ? data.EntityId[0] : data.EntityId;
   loadUsers();
 });
