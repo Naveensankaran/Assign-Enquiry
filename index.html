@@ -26,10 +26,10 @@
   h1 { margin: 0 0 22px; font-size: 18px; font-weight: 600; color: #1f2230; }
 
   .row { display: flex; align-items: center; gap: 16px; }
-  .row label { width: 132px; flex: none; color: var(--label); line-height: 1.3; }
+  .row label { width: 120px; flex: none; color: var(--label); line-height: 1.3; }
 
   /* ---- dropdown ---- */
-  .select { position: relative; width: 310px; }
+  .select { position: relative; width: 260px; }
   .select-btn {
     width: 100%; height: 30px; padding: 0 28px 0 10px;
     display: flex; align-items: center;
@@ -74,7 +74,7 @@
   .btn.primary:disabled { opacity: .55; cursor: default; }
   .btn.ghost { background: #fff; border: 1px solid var(--border); color: var(--text); }
   .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .error { margin: 10px 0 0 148px; color: #d93025; font-size: 12px; min-height: 16px; }
+  .error { margin: 10px 0 0 136px; color: #d93025; font-size: 12px; min-height: 16px; }
 </style>
 </head>
 <body>
@@ -121,7 +121,12 @@ const selectEl = $("select"), btn = $("selectBtn"), list = $("list"), search = $
 $("fieldLabel").textContent = CONFIG.FIELD_LABEL;
 
 /* ---------- dropdown behaviour ---------- */
+const SIZE = { w: 440, closedH: 150, openH: 300 };
+function setSize(h) {
+  try { ZOHO.CRM.UI.Resize({ height: String(h), width: String(SIZE.w) }).catch(() => {}); } catch (e) {}
+}
 function openDropdown() {
+  setSize(SIZE.openH);
   selectEl.classList.add("open");
   btn.setAttribute("aria-expanded", "true");
   search.value = "";
@@ -129,6 +134,7 @@ function openDropdown() {
   search.focus();
 }
 function closeDropdown() {
+  if (selectEl.classList.contains("open")) setSize(SIZE.closedH);
   selectEl.classList.remove("open");
   btn.setAttribute("aria-expanded", "false");
 }
@@ -230,7 +236,7 @@ $("cancelBtn").addEventListener("click", () => ZOHO.CRM.UI.Popup.close());
 
 /* ---------- boot ---------- */
 ZOHO.embeddedApp.on("PageLoad", data => {
-  ZOHO.CRM.UI.Resize({ height: "300", width: "500" }).catch(() => {});
+  setSize(SIZE.closedH);
   recordId = Array.isArray(data.EntityId) ? data.EntityId[0] : data.EntityId;
   loadUsers();
 });
