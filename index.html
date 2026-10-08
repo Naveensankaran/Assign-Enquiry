@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Assign Enquiry1</title>
+<title>Assign Enquiry</title>
 <script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
 <style>
   :root {
@@ -16,16 +16,12 @@
     --muted: #8a90a2;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: transparent; overflow: visible; }
+  html, body { margin: 0; height: 100%; background: #fff; }
   body {
     font-family: "Zoho Puvi", "Lato", "Segoe UI", Arial, sans-serif;
     font-size: 13px;
     color: var(--text);
-    padding: 0;
-  }
-  .dialog-card {
-    position: relative; height: 150px; padding: 20px 22px 0;
-    background: #fff; overflow: visible;
+    padding: 20px 22px 0;
   }
   h1 { margin: 0 0 22px; font-size: 18px; font-weight: 600; color: #1f2230; }
 
@@ -72,7 +68,7 @@
   .list li.state:hover { background: none; }
 
   /* ---- footer ---- */
-  .footer { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 22px; display: flex; justify-content: flex-end; gap: 10px; background: #fff; }
+  .footer { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 22px; display: flex; justify-content: flex-end; gap: 10px; background: #fff; }
   button.btn { height: 30px; padding: 0 18px; border-radius: 4px; font: inherit; cursor: pointer; }
   .btn.primary { background: var(--primary); border: 1px solid var(--primary); color: #fff; }
   .btn.primary:disabled { opacity: .55; cursor: default; }
@@ -83,26 +79,24 @@
 </head>
 <body>
 
-<div class="dialog-card">
-  <div class="row">
-    <label id="fieldLabel" for="selectBtn">Sales Executive</label>
-    <div class="select" id="select">
-      <button type="button" class="select-btn" id="selectBtn" aria-haspopup="listbox" aria-expanded="false">-None-</button>
-      <div class="panel">
-        <div class="search">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
-          <input type="text" id="searchInput" placeholder="Search" autocomplete="off" aria-label="Search users">
-        </div>
-        <ul class="list" id="list" role="listbox"></ul>
+<div class="row">
+  <label id="fieldLabel" for="selectBtn">Direct Sales Executive</label>
+  <div class="select" id="select">
+    <button type="button" class="select-btn" id="selectBtn" aria-haspopup="listbox" aria-expanded="false">-None-</button>
+    <div class="panel">
+      <div class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+        <input type="text" id="searchInput" placeholder="Search" autocomplete="off" aria-label="Search users">
       </div>
+      <ul class="list" id="list" role="listbox"></ul>
     </div>
   </div>
-  <div class="error" id="error"></div>
+</div>
+<div class="error" id="error"></div>
 
-  <div class="footer">
-    <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
-    <button type="button" class="btn primary" id="assignBtn" disabled>Assign</button>
-  </div>
+<div class="footer">
+  <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
+  <button type="button" class="btn primary" id="assignBtn" disabled>Assign</button>
 </div>
 
 <script>
@@ -110,8 +104,8 @@
 const CONFIG = {
   FUNCTION_API_NAME: "getGroupUsers",       // your standalone Deluge function
   TARGET_MODULE: "Leads",                   // module the widget is opened from
-  FIELD_API_NAME: "Owner", // API name of the field to update (user/lookup field)
-  FIELD_LABEL: "Sales Executive1"
+  FIELD_API_NAME: "Direct_Sales_Executive", // API name of the field to update (user/lookup field)
+  FIELD_LABEL: "Direct Sales Executive"
 };
 /* ========================================================================== */
 
@@ -127,11 +121,12 @@ const selectEl = $("select"), btn = $("selectBtn"), list = $("list"), search = $
 $("fieldLabel").textContent = CONFIG.FIELD_LABEL;
 
 /* ---------- dropdown behaviour ---------- */
-const SIZE = { w: 440, closedH: 150 };
+const SIZE = { w: 440, closedH: 150, openH: 300 };
 function setSize(h) {
   try { ZOHO.CRM.UI.Resize({ height: String(h), width: String(SIZE.w) }).catch(() => {}); } catch (e) {}
 }
 function openDropdown() {
+  setSize(SIZE.openH);
   selectEl.classList.add("open");
   btn.setAttribute("aria-expanded", "true");
   search.value = "";
@@ -139,6 +134,7 @@ function openDropdown() {
   search.focus();
 }
 function closeDropdown() {
+  if (selectEl.classList.contains("open")) setSize(SIZE.closedH);
   selectEl.classList.remove("open");
   btn.setAttribute("aria-expanded", "false");
 }
