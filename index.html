@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assign Enquiry</title>
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+<style>
+  :root {
+    --text: #2b2f3e;
+    --label: #5d6479;
+    --border: #c9ccd8;
+    --accent: #5b5fd6;       /* focus / open border */
+    --hover: #f1f2fb;
+    --primary: #3f7ff0;
+    --muted: #8a90a2;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #fff; }
+  body {
+    font-family: "Zoho Puvi", "Lato", "Segoe UI", Arial, sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    padding: 22px 22px 0;
+  }
+  h1 { margin: 0 0 22px; font-size: 18px; font-weight: 600; color: #1f2230; }
+
+  .row { display: flex; align-items: center; gap: 16px; }
+  .row label { width: 132px; flex: none; color: var(--label); line-height: 1.3; }
+
+  /* ---- dropdown ---- */
+  .select { position: relative; width: 310px; }
+  .select-btn {
+    width: 100%; height: 30px; padding: 0 28px 0 10px;
+    display: flex; align-items: center;
+    background: #fff; border: 1px solid var(--border); border-radius: 4px;
+    font: inherit; color: var(--label); text-align: left; cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .select-btn.has-value { color: var(--text); }
+  .select-btn:focus-visible, .select.open .select-btn { outline: none; border-color: var(--accent); }
+  .select-btn::after {
+    content: ""; position: absolute; right: 10px; top: 13px;
+    border: 4px solid transparent; border-top: 5px solid #6b7186;
+  }
+  .select.open .select-btn::after { top: 8px; border-top-color: transparent; border-bottom: 5px solid #6b7186; }
+
+  .panel {
+    display: none; position: absolute; z-index: 10; top: 31px; left: 0; right: 0;
+    background: #fff; border: 1px solid var(--border); border-radius: 4px;
+    box-shadow: 0 6px 18px rgba(30, 34, 60, .18); padding: 8px 0 6px;
+  }
+  .select.open .panel { display: block; }
+
+  .search { position: relative; margin: 0 8px 6px; }
+  .search input {
+    width: 100%; height: 28px; padding: 0 8px 0 30px;
+    border: 1px solid var(--accent); border-radius: 6px; font: inherit; color: var(--text);
+  }
+  .search input:focus { outline: none; box-shadow: 0 0 0 2px rgba(91, 95, 214, .15); }
+  .search svg { position: absolute; left: 9px; top: 7px; width: 14px; height: 14px; stroke: #4a4f63; fill: none; stroke-width: 2; }
+
+  .list { max-height: 170px; overflow-y: auto; margin: 0; padding: 0; list-style: none; scrollbar-width: thin; scrollbar-color: #8f94a8 transparent; }
+  .list li { padding: 6px 16px 6px 24px; cursor: pointer; line-height: 1.35; }
+  .list li:hover, .list li.active { background: var(--hover); }
+  .list li.selected { color: var(--accent); font-weight: 600; }
+  .list li.state { color: var(--muted); cursor: default; }
+  .list li.state:hover { background: none; }
+
+  /* ---- footer ---- */
+  .footer { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 22px; display: flex; justify-content: flex-end; gap: 10px; background: #fff; }
+  button.btn { height: 30px; padding: 0 18px; border-radius: 4px; font: inherit; cursor: pointer; }
+  .btn.primary { background: var(--primary); border: 1px solid var(--primary); color: #fff; }
+  .btn.primary:disabled { opacity: .55; cursor: default; }
+  .btn.ghost { background: #fff; border: 1px solid var(--border); color: var(--text); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .error { margin: 12px 0 0 148px; color: #d93025; font-size: 12px; min-height: 16px; }
+</style>
+</head>
+<body>
+
+<h1>Assign Enquiry</h1>
+
+<div class="row">
+  <label id="fieldLabel" for="selectBtn">Direct Sales Executive</label>
+  <div class="select" id="select">
+    <button type="button" class="select-btn" id="selectBtn" aria-haspopup="listbox" aria-expanded="false">-None-</button>
+    <div class="panel">
+      <div class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+        <input type="text" id="searchInput" placeholder="Search" autocomplete="off" aria-label="Search users">
+      </div>
+      <ul class="list" id="list" role="listbox"></ul>
+    </div>
+  </div>
+</div>
+<div class="error" id="error"></div>
+
+<div class="footer">
+  <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
+  <button type="button" class="btn primary" id="assignBtn" disabled>Assign</button>
+</div>
+
+<script>
+/* ================= CONFIG: change these to match your org ================= */
+const CONFIG = {
+  FUNCTION_API_NAME: "getGroupUsers",       // your standalone Deluge function
+  TARGET_MODULE: "Leads",                   // module the widget is opened from
+  FIELD_API_NAME: "Direct_Sales_Executive", // API name of the field to update (user/lookup field)
+  FIELD_LABEL: "Direct Sales Executive"
+};
+/* ========================================================================== */
+
+let recordId = null;
+let users = [];            // [{id, name, role_id}]
+let selected = null;       // {id, name} or null for -None-
+let filtered = [];
+let activeIndex = -1;
+
+const $ = id => document.getElementById(id);
+const selectEl = $("select"), btn = $("selectBtn"), list = $("list"), search = $("searchInput");
+
+$("fieldLabel").textContent = CONFIG.FIELD_LABEL;
+
+/* ---------- dropdown behaviour ---------- */
+function openDropdown() {
+  selectEl.classList.add("open");
+  btn.setAttribute("aria-expanded", "true");
+  search.value = "";
+  render("");
+  search.focus();
+}
+function closeDropdown() {
+  selectEl.classList.remove("open");
+  btn.setAttribute("aria-expanded", "false");
+}
+btn.addEventListener("click", () => selectEl.classList.contains("open") ? closeDropdown() : openDropdown());
+document.addEventListener("click", e => { if (!selectEl.contains(e.target)) closeDropdown(); });
+search.addEventListener("input", () => render(search.value));
+search.addEventListener("keydown", e => {
+  if (e.key === "Escape") { closeDropdown(); btn.focus(); }
+  else if (e.key === "ArrowDown") { e.preventDefault(); move(1); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
+  else if (e.key === "Enter") { e.preventDefault(); if (activeIndex >= 0) choose(filtered[activeIndex]); }
+});
+
+function move(step) {
+  if (!filtered.length) return;
+  activeIndex = (activeIndex + step + filtered.length) % filtered.length;
+  [...list.children].forEach((li, i) => li.classList.toggle("active", i === activeIndex));
+  list.children[activeIndex].scrollIntoView({ block: "nearest" });
+}
+
+function render(query) {
+  const q = query.trim().toLowerCase();
+  filtered = users.filter(u => u.name.toLowerCase().includes(q));
+  activeIndex = filtered.length ? 0 : -1;
+  list.innerHTML = "";
+  if (!filtered.length) {
+    list.innerHTML = '<li class="state">No users found</li>';
+    return;
+  }
+  filtered.forEach((u, i) => {
+    const li = document.createElement("li");
+    li.textContent = u.name;
+    li.setAttribute("role", "option");
+    if (selected && selected.id === u.id) li.classList.add("selected");
+    if (i === activeIndex) li.classList.add("active");
+    li.addEventListener("mouseenter", () => {
+      activeIndex = i;
+      [...list.children].forEach((x, j) => x.classList.toggle("active", j === i));
+    });
+    li.addEventListener("click", () => choose(u));
+    list.appendChild(li);
+  });
+}
+
+function choose(u) {
+  selected = u;
+  btn.textContent = u.name;
+  btn.classList.add("has-value");
+  $("assignBtn").disabled = false;
+  closeDropdown();
+  btn.focus();
+}
+
+/* ---------- load users via your Deluge function ---------- */
+async function loadUsers() {
+  list.innerHTML = '<li class="state">Loading...</li>';
+  try {
+    const cu = await ZOHO.CRM.CONFIG.getCurrentUser();
+    const managerId = cu.users[0].id;
+
+    const res = await ZOHO.CRM.FUNCTIONS.execute(CONFIG.FUNCTION_API_NAME, {
+      arguments: JSON.stringify({ managerUserId: managerId })
+    });
+
+    let out = res && res.details && res.details.output;
+    if (typeof out === "string") out = JSON.parse(out);
+    users = (out || []).sort((a, b) => a.name.localeCompare(b.name));
+  } catch (err) {
+    console.error(err);
+    $("error").textContent = "Could not load users. Please try again.";
+    users = [];
+  }
+  render("");
+}
+
+/* ---------- assign ---------- */
+$("assignBtn").addEventListener("click", async () => {
+  if (!selected || !recordId) return;
+  $("assignBtn").disabled = true;
+  $("error").textContent = "";
+  try {
+    const apiData = { id: recordId };
+    apiData[CONFIG.FIELD_API_NAME] = { id: selected.id };
+    const res = await ZOHO.CRM.API.updateRecord({
+      Entity: CONFIG.TARGET_MODULE,
+      APIData: apiData,
+      Trigger: ["workflow"]
+    });
+    const status = res && res.data && res.data[0] && res.data[0].code;
+    if (status !== "SUCCESS") throw new Error(JSON.stringify(res));
+    await ZOHO.CRM.UI.Popup.closeReload();
+  } catch (err) {
+    console.error(err);
+    $("error").textContent = "Assignment failed. Check the field API name and permissions.";
+    $("assignBtn").disabled = false;
+  }
+});
+$("cancelBtn").addEventListener("click", () => ZOHO.CRM.UI.Popup.close());
+
+/* ---------- boot ---------- */
+ZOHO.embeddedApp.on("PageLoad", data => {
+  recordId = Array.isArray(data.EntityId) ? data.EntityId[0] : data.EntityId;
+  loadUsers();
+});
+ZOHO.embeddedApp.init();
+</script>
+</body>
+</html>
