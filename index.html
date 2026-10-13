@@ -75,6 +75,20 @@
   .btn.ghost { background: #fff; border: 1px solid var(--border); color: var(--text); }
   .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .error { margin: 10px 0 0 154px; color: #d93025; font-size: 12px; min-height: 16px; }
+
+  /* ---- pending task warning ---- */
+  .warn {
+    display: none; position: fixed; inset: 0; z-index: 20;
+    background: #fff; align-items: center; justify-content: center; padding: 20px;
+  }
+  .warn.show { display: flex; }
+  .warn-box { text-align: center; max-width: 340px; }
+  .warn-icon {
+    width: 34px; height: 34px; margin: 0 auto 10px; border-radius: 50%;
+    background: #fff4e5; color: #e8890c; font-weight: 700; font-size: 20px;
+    line-height: 34px; border: 1px solid #f5c37a;
+  }
+  .warn-box p { margin: 0 0 16px; font-size: 14px; color: #1f2230; line-height: 1.4; }
 </style>
 </head>
 <body>
@@ -99,6 +113,15 @@
   <button type="button" class="btn primary" id="assignBtn" disabled>Assign</button>
 </div>
 
+<!-- Pending task warning -->
+<div class="warn" id="warn" role="alertdialog" aria-live="assertive">
+  <div class="warn-box">
+    <div class="warn-icon">!</div>
+    <p>Kindly complete the pending task before change executives</p>
+    <button type="button" class="btn primary" id="warnOk">OK</button>
+  </div>
+</div>
+
 <script>
 /* ================= CONFIG: change these to match your org ================= */
 const CONFIG = {
@@ -121,7 +144,7 @@ const selectEl = $("select"), btn = $("selectBtn"), list = $("list"), search = $
 $("fieldLabel").textContent = CONFIG.FIELD_LABEL;
 
 /* ---------- dropdown behaviour ---------- */
-const SIZE = { w: 440, closedH: 150, openH: 300 };
+const SIZE = { w: 440, closedH: 150, openH: 300, warnH: 220 };
 function setSize(h) {
   try { ZOHO.CRM.UI.Resize({ height: String(h), width: String(SIZE.w) }).catch(() => {}); } catch (e) {}
 }
@@ -213,11 +236,42 @@ async function loadUsers() {
   render("");
 }
 
+/* ---------- open task check ---------- */
+async function hasOpenTasks() {
+  try {
+    const res = await ZOHO.CRM.API.getRelatedRecords({
+      Entity: CONFIG.TARGET_MODULE,
+      RecordID: recordId,
+      RelatedList: "Tasks",
+      page: 1,
+      per_page: 200
+    });
+    const tasks = (res && res.data) || [];
+    return tasks.some(t => t.Status !== "Completed");
+  } catch (e) {
+    // Zoho throws/returns empty when the record has no tasks
+    console.warn("Task check:", e);
+    return false;   // change to `true` to block when the check itself fails
+  }
+}
+
+function showWarning() {
+  closeDropdown();
+  setSize(SIZE.warnH);
+  $("warn").classList.add("show");
+  $("warnOk").focus();
+}
+$("warnOk").addEventListener("click", () => ZOHO.CRM.UI.Popup.close());
+
 /* ---------- assign ---------- */
 $("assignBtn").addEventListener("click", async () => {
   if (!selected || !recordId) return;
   $("assignBtn").disabled = true;
   $("error").textContent = "";
+
+  // re-check in case a task was added while the popup was open
+  if (await hasOpenTasks()) { showWarning(); return; }
+
   try {
     const apiData = { id: recordId };
     apiData[CONFIG.FIELD_API_NAME] = { id: selected.id };
@@ -238,9 +292,14 @@ $("assignBtn").addEventListener("click", async () => {
 $("cancelBtn").addEventListener("click", () => ZOHO.CRM.UI.Popup.close());
 
 /* ---------- boot ---------- */
-ZOHO.embeddedApp.on("PageLoad", data => {
+ZOHO.embeddedApp.on("PageLoad", async data => {
   setSize(SIZE.closedH);
   recordId = Array.isArray(data.EntityId) ? data.EntityId[0] : data.EntityId;
+
+  if (await hasOpenTasks()) {
+    showWarning();
+    return;               // don't load users or allow assignment
+  }
   loadUsers();
 });
 ZOHO.embeddedApp.init();
